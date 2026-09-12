@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 2026 — Painel ao vivo</title>
+<style>
+  :root {
+    --bg: #0a0b0d;
+    --bg-raised: #151619;
+    --line: #26272b;
+    --red: #e4002b;
+    --amber: #ffb300;
+    --green: #00c853;
+    --purple: #b975ff;
+    --text: #f2f1ec;
+    --text-dim: #86878c;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 28px 20px 0;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--red);
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+  }
+
+  .brand {
+    font-weight: 800;
+    font-stretch: condensed;
+    letter-spacing: -0.02em;
+    font-size: 22px;
+    transform: scaleX(0.94);
+    transform-origin: left;
+  }
+
+  .brand span { color: var(--red); }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+
+  .status-pill.live {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor;
+  }
+
+  .live .dot { animation: pulse 1.4s ease-in-out infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+
+  /* ---------- Session meta ---------- */
+  .session-title {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 18px 0 2px;
+    line-height: 1.05;
+  }
+
+  .session-sub {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+
+  /* ---------- Countdown / empty state ---------- */
+  .empty-state {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 22px;
+    margin: 20px 0;
+    background: var(--bg-raised);
+  }
+
+  .empty-state h2 {
+    font-size: 17px;
+    margin: 0 0 6px;
+  }
+
+  .empty-state p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0 0 18px;
+    line-height: 1.5;
+  }
+
+  .countdown {
+    display: flex;
+    gap: 18px;
+    font-family: var(--mono);
+  }
+
+  .countdown div { text-align: left; }
+
+  .countdown .num {
+    font-size: 30px;
+    font-weight: 700;
+  }
+
+  .countdown .unit {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ---------- Table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13.5px;
+  }
+
+  thead th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 0 8px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  thead th.num, tbody td.num { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid var(--line); }
+
+  tbody td { padding: 10px 8px; }
+
+  td.pos {
+    font-weight: 700;
+    width: 28px;
+  }
+
+  td.pos.top3 { color: var(--red); }
+
+  td.driver { font-weight: 600; }
+
+  .team-bar {
+    display: inline-block;
+    width: 4px;
+    height: 14px;
+    margin-right: 8px;
+    vertical-align: middle;
+    background: var(--text-dim);
+  }
+
+  td.team { color: var(--text-dim); font-family: var(--sans); font-size: 12.5px; }
+
+  td.gap.fastest { color: var(--purple); }
+  td.gap.leader { color: var(--green); }
+
+  /* ---------- Browser (historical picker) ---------- */
+  .browser {
+    margin-top: 34px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+
+  .browser h2 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .selects {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  select {
+    background: var(--bg-raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 10px;
+    font-family: var(--sans);
+    font-size: 13px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .footer-note {
+    margin-top: 26px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  a { color: inherit; }
+
+  @media (max-width: 480px) {
+    .session-title { font-size: 24px; }
+    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">FORMULA <span>1</span> · 2026</div>
+    <div class="status-pill" id="statusPill"><span class="dot"></span><span id="statusText">carregando</span></div>
+  </header>
+
+  <div class="session-title" id="sessionTitle">Painel ao vivo</div>
+  <div class="session-sub" id="sessionSub">Buscando a sessão atual…</div>
+
+  <div id="content"></div>
+
+  <div class="browser">
+    <h2>Ver resultado de outra corrida</h2>
+    <div class="selects">
+      <select id="gpSelect"><option>Carregando corridas…</option></select>
+      <select id="sessionSelect"><option>—</option></select>
+    </div>
+    <div id="browserContent"></div>
+  </div>
+
+  <div class="footer-note" id="footerNote">Dados: api.openf1.org</div>
+</div>
+
+<script>
+const BASE = "https://api.openf1.org/v1";
+const YEAR = 2026;
+
+const SESSION_LABELS = {
+  "Practice 1": "Treino Livre 1",
+  "Practice 2": "Treino Livre 2",
+  "Practice 3": "Treino Livre 3",
+  "Sprint Qualifying": "Sprint Qualifying",
+  "Sprint": "Sprint",
+  "Qualifying": "Qualificação",
+  "Race": "Corrida",
+};
+
+async function getJSON(path, params) {
+  const url = new URL(`${BASE}/${path}`);
+  Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Falha ao consultar ${path}`);
+  return res.json();
+}
+
+function fmtLapTime(seconds) {
+  if (seconds === null || seconds === undefined) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = (seconds % 60).toFixed(3).padStart(6, "0");
+  return h >= 1 ? `${h}:${String(m).padStart(2,"0")}:${s}` : `${m}:${s}`;
+}
+
+function fmtGap(value) {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "string") return value;
+  return `+${value.toFixed(3)}`;
+}
+
+function teamColor(team) {
+  const map = {
+    "McLaren": "#ff8000", "Mercedes": "#00d2be", "Red Bull Racing": "#3671c6",
+    "Ferrari": "#e8002d", "Alpine": "#2293d1", "Racing Bulls": "#6692ff",
+    "Williams": "#37bedd", "Aston Martin": "#229971", "Audi": "#9b9b9b",
+    "Haas": "#b6babd", "Cadillac": "#c9a04f",
+  };
+  return map[team] || "#6b6b70";
+}
+
+function renderTable(rows, opts = {}) {
+  if (!rows.length) {
+    return `<div class="empty-state"><h2>Sem resultado ainda</h2><p>Essa sessão ainda não tem posições publicadas.</p></div>`;
+  }
+  const body = rows.map(r => `
+    <tr>
+      <td class="pos ${r.position <= 3 ? 'top3' : ''}">${String(r.position).padStart(2,"0")}</td>
+      <td class="driver"><span class="team-bar" style="background:${teamColor(r.team)}"></span>${r.name}</td>
+      <td class="team">${r.team}</td>
+      <td class="num gap ${r.position === 1 ? 'leader' : ''}">${r.gapDisplay}</td>
+    </tr>
+  `).join("");
+  return `
+    <table>
+      <thead><tr><th>Pos</th><th>Piloto</th><th>Equipe</th><th class="num">${opts.gapLabel || 'Gap'}</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
+}
+
+function countdownParts(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  return { d, h, m };
+}
+
+// ---------------- LIVE MODE ----------------
+let liveInterval = null;
+
+async function tryLive() {
+  const sessions = await getJSON("sessions", { year: YEAR });
+  const now = new Date();
+
+  const current = sessions.find(s => {
+    const start = new Date(s.date_start);
+    const end = new Date(s.date_end);
+    return now >= start && now <= end;
+  });
+
+  if (current) {
+    startLive(current);
+    return true;
+  }
+
+  const upcoming = sessions
+    .filter(s => new Date(s.date_start) > now)
+    .sort((a, b) => new Date(a.date_start) - new Date(b.date_start))[0];
+
+  showUpcoming(upcoming, sessions);
+  return false;
+}
+
+function showUpcoming(session, allSessions) {
+  document.getElementById("statusPill").classList.remove("live");
+  document.getElementById("statusText").textContent = "sem sessão ao vivo";
+
+  if (!session) {
+    document.getElementById("sessionTitle").textContent = "Temporada encerrada";
+    document.getElementById("sessionSub").textContent = "Não há mais sessões programadas para 2026.";
+    document.getElementById("content").innerHTML = "";
+    return;
+  }
+
+  const label = SESSION_LABELS[session.session_name] || session.session_name;
+  document.getElementById("sessionTitle").textContent = `${session.location}`;
+  document.getElementById("sessionSub").textContent = `Próxima sessão: ${label} · ${session.country_name}`;
+
+  function tick() {
+    const diff = new Date(session.date_start) - new Date();
+    const { d, h, m } = countdownParts(diff);
+    document.getElementById("content").innerHTML = `
+      <div class="empty-state">
+        <h2>Contagem até o início</h2>
+        <p>O painel liga automaticamente assim que a sessão começar.</p>
+        <div class="countdown">
+          <div><div class="num">${d}</div><div class="unit">dias</div></div>
+          <div><div class="num">${h}</div><div class="unit">horas</div></div>
+          <div><div class="num">${m}</div><div class="unit">min</div></div>
+        </div>
+      </div>
+    `;
+  }
+  tick();
+  clearInterval(window._countdownTimer);
+  window._countdownTimer = setInterval(tick, 30000);
+}
+
+async function startLive(session) {
+  clearInterval(window._countdownTimer);
+  document.getElementById("statusPill").classList.add("live");
+  document.getElementById("statusText").textContent = "ao vivo";
+
+  const label = SESSION_LABELS[session.session_name] || session.session_name;
+  document.getElementById("sessionTitle").textContent = session.location;
+  document.getElementById("sessionSub").textContent = `${label} · ${session.country_name}`;
+
+  async function refresh() {
+    try {
+      const [positions, intervals, drivers] = await Promise.all([
+        getJSON("position", { session_key: session.session_key }),
+        getJSON("intervals", { session_key: session.session_key }),
+        getJSON("drivers", { session_key: session.session_key }),
+      ]);
+
+      const latestPosByDriver = {};
+      positions.forEach(p => {
+        const prev = latestPosByDriver[p.driver_number];
+        if (!prev || new Date(p.date) > new Date(prev.date)) latestPosByDriver[p.driver_number] = p;
+      });
+
+      const latestGapByDriver = {};
+      intervals.forEach(iv => {
+        const prev = latestGapByDriver[iv.driver_number];
+        if (!prev || new Date(iv.date) > new Date(prev.date)) latestGapByDriver[iv.driver_number] = iv;
+      });
+
+      const driverInfo = {};
+      drivers.forEach(d => { driverInfo[d.driver_number] = d; });
+
+      const rows = Object.values(latestPosByDriver)
+        .map(p => {
+          const info = driverInfo[p.driver_number] || {};
+          const gapRec = latestGapByDriver[p.driver_number];
+          const gapDisplay = p.position === 1 ? "Líder" : fmtGap(gapRec ? gapRec.gap_to_leader : null);
+          return {
+            position: p.position,
+            name: info.full_name || `#${p.driver_number}`,
+            team: info.team_name || "—",
+            gapDisplay,
+          };
+        })
+        .sort((a, b) => a.position - b.position);
+
+      document.getElementById("content").innerHTML = renderTable(rows, { gapLabel: "Gap p/ líder" });
+      document.getElementById("footerNote").textContent = `Ao vivo · atualizado às ${new Date().toLocaleTimeString("pt-BR")}`;
+    } catch (e) {
+      document.getElementById("footerNote").textContent = "Erro ao atualizar dados ao vivo, tentando de novo...";
+    }
+  }
+
+  await refresh();
+  clearInterval(liveInterval);
+  liveInterval = setInterval(refresh, 5000);
+}
+
+// ---------------- HISTORICAL BROWSER ----------------
+async function initBrowser() {
+  const meetings = await getJSON("meetings", { year: YEAR });
+  const gpSelect = document.getElementById("gpSelect");
+  gpSelect.innerHTML = meetings
+    .sort((a, b) => new Date(a.date_start) - new Date(b.date_start))
+    .map(m => `<option value="${m.meeting_key}">${m.meeting_official_name || m.meeting_name}</option>`)
+    .join("");
+
+  async function loadSessionsFor(meetingKey) {
+    const sessions = await getJSON("sessions", { meeting_key: meetingKey });
+    const sessionSelect = document.getElementById("sessionSelect");
+    sessionSelect.innerHTML = sessions
+      .map(s => `<option value="${s.session_key}">${SESSION_LABELS[s.session_name] || s.session_name}</option>`)
+      .join("");
+    if (sessions.length) loadResultsFor(sessions[sessions.length - 1]);
+  }
+
+  async function loadResultsFor(session) {
+    document.getElementById("browserContent").innerHTML = `<p style="color:var(--text-dim);font-size:13px;">Carregando…</p>`;
+    try {
+      const [raw, drivers] = await Promise.all([
+        getJSON("session_result", { session_key: session.session_key }),
+        getJSON("drivers", { session_key: session.session_key }),
+      ]);
+      const driverInfo = {};
+      drivers.forEach(d => { driverInfo[d.driver_number] = d; });
+
+      const rows = raw
+        .filter(r => r.position !== null && r.position !== undefined)
+        .sort((a, b) => a.position - b.position)
+        .map(r => {
+          const info = driverInfo[r.driver_number] || {};
+          let gapDisplay;
+          if (r.dsq) gapDisplay = "DSQ";
+          else if (r.dnf) gapDisplay = "DNF";
+          else if (r.dns) gapDisplay = "DNS";
+          else if (r.position === 1) gapDisplay = fmtLapTime(r.duration);
+          else gapDisplay = fmtGap(r.gap_to_leader);
+          return { position: r.position, name: info.full_name || `#${r.driver_number}`, team: info.team_name || "—", gapDisplay };
+        });
+
+      document.getElementById("browserContent").innerHTML = renderTable(rows, { gapLabel: "Tempo/Dif." });
+    } catch (e) {
+      document.getElementById("browserContent").innerHTML = `<div class="empty-state"><h2>Não consegui carregar</h2><p>Tenta escolher a sessão de novo em alguns segundos.</p></div>`;
+    }
+  }
+
+  gpSelect.addEventListener("change", () => loadSessionsFor(gpSelect.value));
+
+  document.getElementById("sessionSelect").addEventListener("change", async (e) => {
+    const sessions = await getJSON("sessions", { meeting_key: gpSelect.value });
+    const session = sessions.find(s => String(s.session_key) === e.target.value);
+    if (session) loadResultsFor(session);
+  });
+
+  if (meetings.length) loadSessionsFor(meetings[0].meeting_key);
+}
+
+// ---------------- BOOT ----------------
+(async function boot() {
+  try {
+    await tryLive();
+  } catch (e) {
+    document.getElementById("sessionSub").textContent = "Não consegui conectar à API agora. Tentando de novo…";
+  }
+  setInterval(async () => {
+    if (!liveInterval) { try { await tryLive(); } catch (e) {} }
+  }, 60000);
+
+  try {
+    await initBrowser();
+  } catch (e) {
+    document.getElementById("gpSelect").innerHTML = "<option>Erro ao carregar calendário</option>";
+  }
+})();
+</script>
+</body>
+</html>
